@@ -189,7 +189,7 @@ pyinstaller --noconfirm --onefile --name HTMLStudio --noconsole ^
 - 保持零第三方运行时依赖；
 - 界面文案在中 / 英 / 日三语中同步更新。
 
-### License
+### 许可
 
 [MIT](LICENSE) © 2026 凌空 (Lingkong)
 
@@ -203,35 +203,66 @@ pyinstaller --noconfirm --onefile --name HTMLStudio --noconsole ^
 
 ## English
 
-### Why
+### Why this exists
 
-Generating a page with AI takes seconds; fixing one typo usually costs another round of prompting — and the model often rewrites layout and colors along the way. HTML Studio is a local visual editor for the page you already like: **index → preview → edit in place → auto-backup → roll back**.
+Generating a page with AI takes seconds. Fixing one typo usually costs another round of prompting — and the model often rewrites the layout, the colors, and a few unrelated paragraphs along the way.
+
+1. **One word, whole page rewritten.** Ask for “just this sentence” and you get a different design back.
+2. **Changing an image means digging into the DOM.** Images, buttons and cards are buried in markup, and after replacing a file you still have to worry about paths and caching.
+3. **No way back.** Without backups or history, one wrong click means regenerating from scratch.
+
+HTML Studio collapses this into one local page: **index → preview → edit in place → auto-backup → roll back**. It never regenerates your page; it edits the version you already approved.
 
 ### What it is
 
-- A single Python script using **only the standard library** — no pip install.
-- A single-file frontend with **no CDN**, fully offline.
-- Binds to `127.0.0.1:8781` by default.
-- Edits files on your disk directly; nothing is uploaded.
+A local visual editor for HTML pages:
+
+- The backend is a single Python script using **only the standard library** — no pip dependencies.
+- The frontend is a single `index.html` — no CDN, fully offline.
+- It binds to `127.0.0.1:8781` by default and never exposes itself to the internet.
+- It reads and writes the HTML files already on your disk: no migration, no upload, no external API.
+- Every write is backed up first, and every change leaves a version in history.
+
+It does not replace AI or your code editor. It only takes the page you generated and gets it ready to ship.
 
 ### Features
 
 | Capability | Description |
 | --- | --- |
-| Index & search | Add any local folder as a content root; search, sort, cover, pin |
+| Index & search | Add any local folder as a content root; automatic indexing, search, sorting, covers, pinning |
 | Text editing | Rewrite copy block by block without touching markup |
-| Inline styles | Select a few words to change color, bold, italic, underline, size |
-| Element editing | Images, links, buttons, cards: src, href, size, radius, spacing, max-width |
-| Image replacement | Every image, including script-swapped ones, with thumbnails and automatic backups |
-| Palette | Edit CSS variables with live preview; built-in palettes; save or remove injection |
-| Device preview | Auto / desktop / tablet / phone with real viewport presets |
-| Live edit | Click to locate an element, double-click to edit its text |
-| Handoff | Generate a Markdown brief for the next AI or teammate |
-| History | Diff, restore, and independent backups for every write |
+| Inline text styles | Select a few words to change color, bold, italic, underline or font size — only the selection changes |
+| Element editing | Images, links, buttons and cards: src, href, size, alignment, radius, padding, margin, max-width |
+| Image replacement | Lists every image the page uses (including script-swapped ones), with thumbnails, in-place replacement and automatic backups |
+| Palette | Read and edit CSS variables with live preview; built-in palettes; save, apply, or remove the injected style |
+| Device preview | Auto / desktop / tablet / phone, with real presets for MacBook, iPad, iPhone and Android |
+| Live edit | Click to locate an element, double-click to edit its text; selections highlight the matching source |
+| Handoff | Pick goals and tasks, then generate a Markdown brief for the next AI or teammate |
+| History & rollback | Every write becomes a version; diff, restore, plus an independent backup directory |
 | Export | PDF / PNG of the current page, or a zip of selected pages |
-| i18n & themes | Chinese / English / Japanese, light and dark |
+| Languages & themes | Chinese / English / Japanese, light and dark |
+
+### Five workspaces
+
+| Tab | What it is for |
+| --- | --- |
+| Text | Edit copy block by block; best for long passages and heading structure |
+| Element | Edit the attributes and box model of images, links, buttons and cards; replace images; pick from the preview |
+| Palette | Tune CSS variables and built-in palettes with live preview before applying |
+| Handoff | Generate a Markdown brief telling the next AI or colleague what still needs work |
+| Version | Browse history, compare diffs, restore, and manage backups |
+
+### Workflow
+
+1. **Index** — add the folder that holds your HTML; the page list appears on the left.
+2. **Select** — the live preview sits in the middle with device switching; the editor panel is on the right.
+3. **Edit** — change copy, style a text selection, click elements, replace images, adjust the palette.
+4. **Apply** — edits stay as a draft until you press Apply; the file is backed up right before writing.
+5. **Roll back** — review diffs under Version and restore any earlier state at any time.
 
 ### Quick start
+
+All you need is Python 3.9+. No third-party packages:
 
 ```bash
 git clone https://github.com/Alksay2002/html-studio.git
@@ -239,28 +270,112 @@ cd html-studio
 python htmlstudio_server.py
 ```
 
-Open <http://127.0.0.1:8781/>, click “Add folder”, and pick the directory that holds your HTML files.
+Your browser opens `http://127.0.0.1:8781/` automatically. Click “Add folder” in the top-left corner and choose the directory that contains your HTML files.
 
-Options: `--port`, `--host`, `--list`, `--no-browser`.
+Common options:
 
-### Safety
+| Option | Effect |
+| --- | --- |
+| `--port 9000` | Use another port (default `8781`) |
+| `--host 0.0.0.0` | Allow LAN access (localhost only by default; check your network first) |
+| `--list` | Print indexed pages and exit |
+| `--no-browser` | Do not open a browser on start |
 
-- Localhost only by default; no telemetry, no external API calls.
-- Every read/write is confined to the content roots you added.
-- Image replacement accepts the same format only and keeps the old file under `.htmlstudio/asset-backups/`.
-- PDF / PNG export uses your installed Edge or Chrome locally.
+### Why is only one image listed?
+
+The page may contain a single `<img>` while the rest are swapped at runtime by JavaScript (common in portfolios, carousels and preview switchers). Element scanning only reports the real DOM, so one image is expected.
+
+Use **Element → Image assets** instead: it lists images referenced from HTML, JS and CSS plus sibling image files in those directories, and lets you replace them one by one. Replacement overwrites in place and keeps the old file under `.htmlstudio/asset-backups/` next to the page.
+
+### Data and backups
+
+| Content | Location |
+| --- | --- |
+| Config, index, palettes | `data/` (`%APPDATA%\HTMLStudio\data` when packaged) |
+| Page backups | `data/backups/` |
+| Version history | `data/history/` |
+| Image replacement backups | `.htmlstudio/asset-backups/` next to the page |
+| Export cache | `data/exports/` |
+
+Storage can be switched under **Settings → Storage**: keep everything in the data directory, or store it beside the page.
+
+### Safety boundaries
+
+- The server binds to `127.0.0.1` by default and never listens publicly.
+- Every read and write is confined to the content roots you added; `..` is allowed only when the resolved path stays inside a root.
+- Image replacement accepts the same format only and verifies the target is an existing image before writing.
+- No telemetry, no uploads. PDF / PNG export uses your locally installed Edge or Chrome and makes no network calls.
 
 ### FAQ
 
-**Only one image is listed.** The page may contain a single `<img>` and swap images with JavaScript. Use “Element → Image assets” to see every referenced file.
+**A change failed to apply.**
+The file may be locked by another program, marked read-only, or no longer inside a content root. Refresh and retry; a failed write never damages the original, and backups remain.
 
-**A change failed to apply.** The file may be locked, read-only, or outside the content root. Refresh and retry; the original file is never lost.
+**Thumbnails or preview images do not show.**
+Make sure the file really is inside a content root. Version 0.1.0 fixed relative paths such as `../assets/...` being rejected.
 
-**Does it rewrite my page with AI?** No. It only edits the version you already approved.
+**Can it edit a live website?**
+No. It only works on local files; download the page first.
+
+**Does it replace AI generation?**
+No. It edits the version you already approved so the model does not rewrite everything.
+
+**The port is taken.**
+Start it with `--port` and pick another one.
+
+### Architecture
+
+```mermaid
+flowchart LR
+  A[Local HTML folder] --> B[Content roots & index]
+  B --> C[Python stdlib server<br/>127.0.0.1:8781]
+  C --> D[Single-file frontend index.html]
+  D -->|text / element / image / palette| C
+  C --> E[Backups data/backups]
+  C --> F[History data/history]
+  C --> G[Image backups .htmlstudio/asset-backups]
+```
+
+```
+html-studio/
+├─ htmlstudio_server.py   # Local server: index, editing, backups, palette, export
+├─ index.html             # Single-file frontend: i18n, themes, preview, panels
+├─ assets/                # Icons
+├─ app.config.json        # Optional: Windows installer config
+├─ LICENSE
+└─ README.md
+```
+
+### Build a Windows app (optional)
+
+```bash
+pip install pyinstaller
+pyinstaller --noconfirm --onefile --name HTMLStudio --noconsole ^
+  --add-data "index.html;." --add-data "assets;assets" htmlstudio_server.py
+```
+
+For an installer wizard, use Inno Setup with `app.config.json`. A packaged build automatically stores its data in `%APPDATA%\HTMLStudio\data`.
+
+### Roadmap
+
+- More element types: tables, lists, form controls
+- Batch image replacement and compression
+- Undo / redo for inline styles
+- More built-in palettes and one-click theming
+
+### Contributing
+
+Issues and pull requests are welcome. Before submitting, please make sure:
+
+- No personal paths, keys, tokens, or private page content are included.
+- Runtime dependencies stay at zero.
+- UI strings are updated in Chinese, English and Japanese together.
 
 ### License
 
 [MIT](LICENSE) © 2026 Lingkong
+
+If this tool saves you from reopening a chat just to fix a typo, a star is the best way to say thanks.
 
 ---
 
@@ -270,33 +385,64 @@ Options: `--port`, `--host`, `--list`, `--no-browser`.
 
 ### なぜ必要か
 
-AI でページを作るのは数十秒、誤字を直すのにもう一度プロンプトを打つ——しかもレイアウトや配色まで書き換えられがちです。HTML Studio は、**すでに気に入っているページ**をローカルでそのまま編集するためのツールです。
+AI でページを生成するのは数十秒。しかし誤字をひとつ直すたびに、もう一度プロンプトを打つことになりがちです。しかもモデルは「その一文だけ」のつもりが、レイアウトや配色、関係のない段落まで書き換えてしまうことがあります。
 
-### 特徴
+1. **一文字の修正で、ページ全体が書き換わる。** 「ここだけ直して」と頼んでも、戻ってくるのは別デザインのページ。
+2. **画像を差し替えるには DOM を掘る必要がある。** 画像・ボタン・カードはマークアップの奥にあり、ファイルを差し替えてもパスとキャッシュの問題が残ります。
+3. **失敗しても戻れない。** バックアップも履歴もなければ、一回の誤操作で最初から作り直すしかありません。
 
-- Python 標準ライブラリのみの単一スクリプト。追加インストール不要。
-- 単一ファイルのフロントエンド。CDN 不使用、オフラインで動作。
-- 既定では `127.0.0.1:8781` のみで待ち受け。
-- ディスク上の HTML を直接編集。アップロードなし、外部 API なし。
+HTML Studio はこの三つを一つのローカルページにまとめます：**取り込み → プレビュー → その場で編集 → 自動バックアップ → いつでも復元**。ページを再生成せず、すでに気に入っている版だけを正確に編集します。
 
-### できること
+### これは何か
+
+ローカルで動く HTML のビジュアルエディタです。
+
+- バックエンドは Python の単一スクリプトで、**標準ライブラリのみ**。pip 依存はありません。
+- フロントエンドは単一の `index.html`。CDN 不使用で、オフラインでも動作します。
+- 既定では `127.0.0.1:8781` のみで待ち受け、外部には公開しません。
+- ディスク上にある HTML を直接読み書きします。移行もアップロードも外部 API もありません。
+- 書き込みの前に必ずバックアップし、変更は履歴として残します。
+
+AI の代わりでも、コードエディタの代わりでもありません。生成済みのページを、渡せる状態まで仕上げるためのツールです。
+
+### 機能
 
 | 機能 | 内容 |
 | --- | --- |
-| 取り込みと索引 | ローカルフォルダを追加し、HTML を自動索引。検索・並べ替え・表紙・ピン留め |
-| テキスト編集 | 段落・見出し単位で文章を修正 |
-| 部分スタイル | 選択した数文字だけ色・太字・斜体・下線・文字サイズを変更 |
-| 要素編集 | 画像・リンク・ボタン・カードの属性、サイズ、角丸、余白、最大幅 |
-| 画像置換 | スクリプトで切り替わる画像も含めて一覧表示し、その場で置換。旧画像は自動バックアップ |
-| 配色 | CSS 変数をライブプレビューしながら調整。配色プリセットの保存・適用・解除 |
-| 端末プレビュー | 自動 / PC / タブレット / スマートフォン、実機相当のビューポート |
-| プレビュー編集 | クリックで要素を特定、ダブルクリックでテキストを直接編集 |
-| 引き継ぎ | 次の AI や担当者向けの Markdown 指示を生成 |
-| 履歴 | 差分表示・復元・独立バックアップ |
-| 書き出し | 現在のページを PDF / PNG、選択ページを zip に |
-| 三言語・テーマ | 中文 / English / 日本語、ライト・ダーク |
+| 取り込みと索引 | ローカルフォルダをコンテンツルートとして追加し、HTML を自動索引。検索・並べ替え・表紙・ピン留めに対応 |
+| テキスト編集 | 段落・見出し単位で文章を修正。タグに触れる必要はありません |
+| 部分的な文字スタイル | プレビューで数文字を選択し、色・太字・斜体・下線・文字サイズを変更。選択範囲だけに適用 |
+| 要素編集 | 画像・リンク・ボタン・カードの src、href、サイズ、配置、角丸、余白、最大幅を編集 |
+| 画像の置換 | ページが使う画像をすべて一覧表示（スクリプトで切り替わる画像も含む）。サムネイル確認、その場で置換、旧画像は自動バックアップ |
+| 配色 | CSS 変数を読み取り、ライブプレビューしながら編集。配色プリセットの保存・適用・解除 |
+| 端末プレビュー | 自動 / PC / タブレット / スマートフォン。MacBook・iPad・iPhone・Android の実機相当サイズを内蔵 |
+| プレビュー内編集 | クリックで要素を特定、ダブルクリックでテキストを直接編集。選択すると対応するソース位置を強調 |
+| 引き継ぎ | 目的とタスクを選び、次の AI や担当者に渡せる Markdown の指示を生成 |
+| 履歴と復元 | 書き込みごとに履歴を作成。差分表示・ワンクリック復元・独立したバックアップディレクトリ |
+| 書き出し | 現在のページを PDF / PNG、選択した複数ページを zip に |
+| 三言語・テーマ | 中文 / English / 日本語、ライト・ダークの 2 テーマ |
+
+### 五つのワークスペース
+
+| タブ | 用途 |
+| --- | --- |
+| テキスト | ブロック単位で文章を編集。長い文章や見出し構造の調整に向きます |
+| 要素 | 画像・リンク・ボタン・カードの属性とボックスモデルを編集。画像置換とプレビューからの選択も可能 |
+| 配色 | CSS 変数と配色プリセットをライブプレビューしながら調整し、適用 |
+| 引き継ぎ | 次に何を直すかをまとめた Markdown を生成 |
+| バージョン | 履歴の閲覧、差分比較、復元、バックアップ管理 |
+
+### ワークフロー
+
+1. **取り込み** — HTML のあるフォルダを追加すると、左側にページ一覧が表示されます。
+2. **選択** — 中央がライブプレビュー（端末サイズ切替付き）、右側が編集パネルです。
+3. **編集** — 文章、選択範囲のスタイル、要素、画像、配色を変更します。
+4. **適用** — 変更は下書きのまま保持され、「適用」で初めてファイルに書き込みます。書き込み直前に自動バックアップ。
+5. **復元** — 「バージョン」で差分を確認し、いつでも以前の状態に戻せます。
 
 ### はじめ方
+
+必要なのは Python 3.9 以上だけです。サードパーティ製パッケージは不要です。
 
 ```bash
 git clone https://github.com/Alksay2002/html-studio.git
@@ -304,16 +450,109 @@ cd html-studio
 python htmlstudio_server.py
 ```
 
-<http://127.0.0.1:8781/> を開き、「フォルダを追加」から HTML のあるディレクトリを選びます。
+ブラウザが自動で `http://127.0.0.1:8781/` を開きます。初回は左上の「フォルダを追加」から、HTML が入っているディレクトリを選んでください。
 
-オプション：`--port` / `--host` / `--list` / `--no-browser`。
+主なオプション：
 
-### 安全について
+| オプション | 内容 |
+| --- | --- |
+| `--port 9000` | ポートを変更（既定は `8781`） |
+| `--host 0.0.0.0` | LAN からのアクセスを許可（既定はローカルのみ。開放前にネットワーク環境を確認してください） |
+| `--list` | 索引済みページを表示して終了 |
+| `--no-browser` | 起動時にブラウザを開かない |
 
-- 既定ではローカルのみ。テレメトリも外部 API もありません。
-- 読み書きは追加したコンテンツルート内に限定されます。
-- 画像置換は同じ形式のみ。旧ファイルは `.htmlstudio/asset-backups/` に保存されます。
+### 画像が一枚しか表示されない理由
+
+ページに `<img>` が一つだけ書かれていて、残りが実行時に JavaScript で差し替えられている場合があります（ポートフォリオ、カルーセル、プレビュー切替など）。要素スキャンは実際の DOM だけを見るため、一枚だけ表示されるのは正常です。
+
+その場合は **「要素 → 画像リソース」** を使ってください。HTML・JS・CSS から参照されている画像と、同じディレクトリ内の画像ファイルをまとめて一覧表示し、一枚ずつ置換できます。置換は上書きで、元の画像はページ横の `.htmlstudio/asset-backups/` に保存されます。
+
+### データとバックアップ
+
+| 内容 | 場所 |
+| --- | --- |
+| 設定・索引・配色プリセット | `data/`（パッケージ版では `%APPDATA%\HTMLStudio\data`） |
+| ページのバックアップ | `data/backups/` |
+| バージョン履歴 | `data/history/` |
+| 画像置換のバックアップ | ページ横の `.htmlstudio/asset-backups/` |
+| 書き出しキャッシュ | `data/exports/` |
+
+保存場所は **設定 → ストレージ** で切り替えられます。データディレクトリに集約するか、ページの隣に置くかを選べます。
+
+### 安全上の境界
+
+- 既定では `127.0.0.1` のみにバインドし、外部には公開しません。
+- 読み書きは追加したコンテンツルート内に限定されます。`..` は解決後のパスがルート内に収まる場合だけ許可されます。
+- 画像置換は同じ形式のみを受け付け、書き込み前に既存の画像であることを検証します。
+- テレメトリもアップロードもありません。PDF / PNG の書き出しはローカルの Edge / Chrome を使い、ネットワークには接続しません。
+
+### よくある質問
+
+**変更の適用に失敗しました。**
+ファイルが他のプログラムに使用されている、読み取り専用になっている、またはコンテンツルートの外にある可能性があります。再読み込みしてから試してください。失敗しても元ファイルは壊れず、バックアップも残ります。
+
+**サムネイルやプレビューの画像が表示されません。**
+画像が本当にコンテンツルート内にあるか確認してください。0.1.0 で `../assets/...` のような相対パスが拒否される問題は修正済みです。
+
+**オンラインのサイトを直接編集できますか？**
+できません。ローカルのファイルだけを扱います。必要なら先にファイルをダウンロードしてください。
+
+**AI による生成を置き換えますか？**
+いいえ。すでに承認した版を編集するだけで、モデルにページ全体を書き直させません。
+
+**ポートが使用中です。**
+`--port` で別のポートを指定してください。
+
+### アーキテクチャ
+
+```mermaid
+flowchart LR
+  A[ローカルの HTML フォルダ] --> B[コンテンツルートと索引]
+  B --> C[Python 標準ライブラリのサーバー<br/>127.0.0.1:8781]
+  C --> D[単一ファイルの frontend index.html]
+  D -->|テキスト / 要素 / 画像 / 配色| C
+  C --> E[バックアップ data/backups]
+  C --> F[履歴 data/history]
+  C --> G[画像バックアップ .htmlstudio/asset-backups]
+```
+
+```
+html-studio/
+├─ htmlstudio_server.py   # ローカルサーバー：索引・編集・バックアップ・配色・書き出し
+├─ index.html             # 単一ファイルのフロントエンド：三言語 / テーマ / プレビュー / パネル
+├─ assets/                # アイコン
+├─ app.config.json        # 任意：Windows インストーラ設定
+├─ LICENSE
+└─ README.md
+```
+
+### Windows アプリとしてビルド（任意）
+
+```bash
+pip install pyinstaller
+pyinstaller --noconfirm --onefile --name HTMLStudio --noconsole ^
+  --add-data "index.html;." --add-data "assets;assets" htmlstudio_server.py
+```
+
+インストーラが必要な場合は `app.config.json` を使って Inno Setup で生成できます。パッケージ版のデータは自動的に `%APPDATA%\HTMLStudio\data` に保存されます。
+
+### ロードマップ
+
+- 要素タイプの追加：表・リスト・フォーム部品
+- 画像の一括置換と圧縮
+- 部分スタイルの取り消し / やり直し
+- 配色プリセットの追加とワンクリックのテーマ切替
+
+### コントリビュート
+
+Issue と Pull Request を歓迎します。提出前に確認してください：
+
+- 個人のパス、キー、Token、非公開ページの内容を含めないこと。
+- 実行時のサードパーティ依存をゼロに保つこと。
+- UI の文言を中国語・英語・日本語で同時に更新すること。
 
 ### ライセンス
 
 [MIT](LICENSE) © 2026 Lingkong
+
+誤字を直すためだけにチャットを開き直す手間が減ったなら、Star が一番の励みになります。
