@@ -4847,11 +4847,14 @@
     if (!small) $('#side').classList.remove('on');
   }
 
-  // 打包运行时：心跳，所有页面关闭后服务自动退出
+  // 打包运行时：心跳 + 关闭信号；后台标签页/休眠不会误杀服务
   function startHeartbeat(){
     const ping = () => fetch('/api/ping', {cache: 'no-store'}).catch(() => {});
     ping();
     setInterval(ping, 5000);
+    const bye = () => { try { navigator.sendBeacon('/api/bye'); } catch (e) {} };
+    window.addEventListener('pagehide', bye);
+    window.addEventListener('beforeunload', bye);
   }
 
   async function init(){

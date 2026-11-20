@@ -6,7 +6,7 @@
 
 改文案 · 局部样式 · 换图片 · 调元素 · 改配色 · 版本回滚 —— 零依赖，只跑在你自己电脑上。
 
-![Version](https://img.shields.io/badge/version-0.1.0-2F6BFF?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.1.1-2F6BFF?style=flat-square)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-2F9B79?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%2F%20macOS%20%2F%20Linux-23262F?style=flat-square)

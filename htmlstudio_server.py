@@ -57,7 +57,7 @@ CONFIG_PATH = os.path.join(DATA_DIR, "config.json")
 PALETTE_PATH = os.path.join(DATA_DIR, "palettes.json")
 LIBRARY_PATH = os.path.join(DATA_DIR, "library.json")
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 APP_NAME = "HTML 工作台"
 
 SKIP_DIRS = {
@@ -164,9 +164,12 @@ _cache = {"t": 0.0, "items": []}
 _meta_cache = {}
 _lock = threading.RLock()
 
-# 打包运行时：前端定时心跳，页面全部关闭后自动退出
-HEARTBEAT_TIMEOUT = 40
-_heartbeat = {"seen": False, "t": 0.0}
+# 打包运行时：前端定时心跳 + 页面关闭信号。
+# 注意不能只靠心跳超时：后台标签页的定时器会被浏览器节流到每分钟一次，
+# 笔记本休眠时更是完全暂停，用 40 秒超时会把正在后台运行的服务误杀。
+HEARTBEAT_GRACE = 45
+HEARTBEAT_FALLBACK = 12 * 3600
+_heartbeat = {"seen": False, "t": 0.0, "closed": 0.0}
 
 # 打包为 --noconsole 程序后，任何子进程都不能弹黑窗
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0
@@ -1703,6 +1706,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/ping":
             _heartbeat["seen"] = True
             _heartbeat["t"] = time.time()
+            _heartbeat["closed"] = 0.0
             self.send_json({"ok": True})
             return
 
@@ -1931,6 +1935,17 @@ class Handler(BaseHTTPRequestHandler):
         path = u.path
 
         try:
+            if path == "/api/bye":
+                # 页面关闭 / 刷新时由 sendBeacon 发来，宽限期后没有新心跳才退出
+                try:
+                    self.rfile.read(int(self.headers.get("Content-Length") or 0))
+                except Exception:
+                    pass
+                _heartbeat["seen"] = True
+                _heartbeat["t"] = time.time()
+                _heartbeat["closed"] = time.time()
+                self.send_json({"ok": True})
+                return
             if path == "/api/text":
                 self.handle_text_patch()
             elif path == "/api/inline":
@@ -2764,10 +2779,16 @@ class ExclusiveHTTPServer(ThreadingHTTPServer):
 
 
 def heartbeat_watchdog(srv):
-    """打包运行时：浏览器页面全部关闭后自动关闭服务。"""
+    """打包运行时：页面关闭后退出；后台标签页与休眠不误杀。"""
     while True:
-        time.sleep(4)
-        if _heartbeat["seen"] and time.time() - _heartbeat["t"] > HEARTBEAT_TIMEOUT:
+        time.sleep(5)
+        now = time.time()
+        # 前端发出关闭信号后，留出宽限给刷新和多标签页的其它页面继续心跳
+        if _heartbeat["closed"] and now - _heartbeat["closed"] > HEARTBEAT_GRACE:
+            srv.shutdown()
+            return
+        # 兜底：进程被强行关闭等收不到信号的情况，长时间无心跳才退出
+        if _heartbeat["seen"] and now - _heartbeat["t"] > HEARTBEAT_FALLBACK:
             srv.shutdown()
             return
 
