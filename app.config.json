@@ -1,0 +1,38 @@
+{
+  "appName": "HTML 工作台",
+  "appNameEn": "HTMLStudio",
+  "version": "0.1.0",
+  "build": 10,
+  "publisher": "HTML Studio",
+  "publisherUrl": "",
+  "appId": "6AF9C440-A6E0-5B58-8FEE-41040A0F93A0",
+  "outputDir": "release",
+  "stack": {
+    "type": "python",
+    "entry": "htmlstudio_server.py",
+    "exeName": "HTMLStudio",
+    "mode": "onefile",
+    "noconsole": true,
+    "icon": "assets/logo.ico",
+    "hiddenImports": [],
+    "addData": [
+      "index.html;.",
+      "assets;assets"
+    ],
+    "command": [],
+    "artifact": "",
+    "launchTarget": "HTMLStudio.exe"
+  },
+  "include": [],
+  "languages": [
+    "chinesesimplified",
+    "english"
+  ],
+  "options": {
+    "perUserInstall": true,
+    "desktopShortcut": true,
+    "launchAfterInstall": true,
+    "deleteUserDataOnUninstall": false,
+    "userDataDir": "%APPDATA%\\HTMLStudio\\data"
+  }
+}
